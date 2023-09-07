@@ -12,8 +12,8 @@ The encoded strings contain `[ !"0-9a-z]`. ` !"` are word separators encoding th
 bit is always 0, the second and third bit are either 00 or 11. We thus use only 6 bits to encode each caracter of
 the words.
 
-There are about 22000 documents with ids ranging from 1 to 100000. This requires i16 and i32 respectively to store.
-These documents contain about " distinct words and " words in total.
+There are about 24418 indexed documents with ids ranging from 1 to 91481. This requires i16 and i32 respectively to store.
+These documents contain about 181548 distinct words and 1838738 words in total in 30367 documents. There are between 4 and 313 distinct words in a document. Only 15 documents have more than 255 words. Words occur bewteen 1 and 21771 times.
 
 Word tree
 =========
