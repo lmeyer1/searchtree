@@ -84,3 +84,20 @@ The first two blocks contain the two trees.
 The docs list of the words tree and the words list of the docs tree are similar instructure and can be interleaved
 in one block.
 The file header just consists of two i32 representing the offsets of the start of the second and third block.
+
+Expected sizes
+==============
+
+Word tree
+181548 words, 2n = 363096 nodes, x20B = 6.93MB
+Doc tree
+24418 docs (k), max id 91481 (n), min k = 24418, max (1 + log2(n)-log2(k))\*k = 70947 nodes, 693 kB
+as list: 91481 items, i32 (4 B each), 357 kB
+Word list 1.84 M reads
+4 pointers per chunk 8.91 MB, 402 k extra reads
+8	11.3 MB, 189 k extra reads
+16	16.5 MB, 88.0 k extra reads
+Docs list
+4 pointers per chunk 7.30 MB, 448 k extra reads
+8	7.54 MB, 216 k extra reads
+16	7.95 MB, 100 k extra reads
