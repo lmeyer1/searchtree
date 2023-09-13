@@ -9,8 +9,8 @@ class Tools
 	 */
 	public static function bit_substr($string, $offset, $length)
 	{
-		$substr = substr($string, $offset div 8, ($length + 7) div 8);
-		
+		$substr = substr($string, intdiv($offset, 8), intdiv($length + 7, 8));
+		return $substr;
 	}
 	
 	public static function bin_dump($string)
