@@ -1,7 +1,7 @@
 <?php
 namespace Searchindex;
 
-class DocWordList 
+class WordDocList
 {
 	protected $bytes;
 

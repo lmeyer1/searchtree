@@ -35,11 +35,11 @@ class WordIndex
 		
 		while ($traverse_node && $bits_found < strlen($word) * 8)
 		{
-			$next_byte = ord(substr($word, $bits_found div 8, 1));
-			$next_bit = (bool)($next_byte << ($bits_found mod 8)) & 0x80;
+			$next_byte = ord(substr($word, intdiv($bits_found, 8), 1));
+			$next_bit = (bool)($next_byte << ($bits_found % 8)) & 0x80;
 			
 			$node_pointer = 20 * $traverse_node + 4 + (int) $next_bit * 4;
-			$node = unpack('L5', substr($this->bytes, 20 * $traverse_node, 4);
+			$node = unpack('L5', substr($this->bytes, 20 * $traverse_node, 4));
 			$next_node = $node[2 + (int) $next_bit];
 			
 			if ($next_node) {

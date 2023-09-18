@@ -4,10 +4,10 @@ namespace Searchindex;
 class Index 
 {
 	protected $filename;
-	protected WordIndex $words;
-	protected WordDocList $wordDocs;
-	protected DocIndex $docs;
-	protected DocWordList $docWords;
+	protected $words;
+	protected $wordDocs;
+	protected $docs;
+	protected $docWords;
 	
 	public function __construct ($filename)
 	{
@@ -21,11 +21,10 @@ class Index
 
 	protected function init()
 	{
-		$this->words = new WordIndex()
+		$this->words = new WordIndex();
 		$this->wordDocs = new WordDocList();
 		$this->docs = new DocIndex();
-		$this->words = new DocWordList();
-		$this->save();
+		$this->docWords = new DocWordList();
 	}
 
 	protected function load()
@@ -33,27 +32,35 @@ class Index
 		$bytes = file_get_contents($this->filename);
 		$lengths = unpack('L3', substr($bytes, 4, 3 * 4));
 		$start = 16;
-		$this->words = new WordIndex(substr($bytes, $start, $lengths[0])));
+		$this->words = new WordIndex(substr($bytes, $start, $lengths[0]));
 		$start += $lengths[0];
-		$this->wordDocs = new WordDocList(substr($bytes, $start, $lengths[1])));
+		$this->wordDocs = new WordDocList(substr($bytes, $start, $lengths[1]));
 		$start += $lengths[1];
-		$this->docs = new DocIndex(substr($bytes, $start, $lengths[2])));
+		$this->docs = new DocIndex(substr($bytes, $start, $lengths[2]));
 		$start += $lengths[2];
-		$this->words = new DocWordList(substr($bytes, $start)));
+		$this->words = new DocWordList(substr($bytes, $start));
 	}
 
-	protected function save()
+	public function getBytes()
 	{
 		$bytes = 'INDX';
 		$bytes .= pack('L3', strlen($this->words->getBytes()), strlen($this->wordDocs->getBytes()), strlen($this->docs->getBytes()));
 		$bytes .= $this->words->getBytes() . $this->wordDocs->getBytes() . $this->docs->getBytes() . $this->docWords->getBytes();
-		file_put_contents($this->filename, $bytes);
+		return $bytes;
+	}
+	protected function save()
+	{
+		if(!empty($this->filename)) {
+			file_put_contents($this->filename, $this->getBytes());
+		} else {
+			return $this->getBytes();
+		}
 	}
 
 	protected function insertWord($doc_id, $word)
 	{
 		$word_node = $this->words->find($word);
-		if (!$word_offset) {
+		if (!$word_node) {
 			$word_node = $this->words->insert($word);
 		}
 		
