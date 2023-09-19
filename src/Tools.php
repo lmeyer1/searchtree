@@ -8,19 +8,22 @@ class Tools
 	public const BIN_DUMP_HEX = 1;
 	public const BIN_DUMP_BIN = 2;
 
-	public static function bit_substr($string, $offset, $length)
+	public static function bit_substr($string, $offset, $length = null): string
 	{
+		if (is_null($length)) {
+			$length = strlen($string) * 8 - $offset;
+		}
 		$substr = substr($string, intdiv($offset, 8), intdiv($length + 7 + $offset % 8, 8));
 		if ($offset % 8) { // shift the bits
 			$substr_new = '';
 			$retain = "\0";
-			for($i = 0; $i < strlen($substr) / 3; $i++) {
+			for ($i = 0; $i < strlen($substr) / 3; $i++) {
 				$int32 = unpack('N', str_pad(substr($substr, $i * 3, 3), 4, "\0", STR_PAD_LEFT));
 				$str4 = pack('N', $int32[1] << ($offset % 8));
 				$bytes_exceeding = ($i + 1) * 3 - strlen($substr);
 				$bytes_exceeding = $bytes_exceeding > 0 ? $bytes_exceeding : 0;
 				$shifted = substr($str4, 1 + $bytes_exceeding);
-				if(ord($retain)) {
+				if (ord($retain)) {
 					$substr_new[-1] = chr(ord($substr_new[-1]) | ord($retain));
 				}
 				$substr_new .= $shifted;
@@ -33,6 +36,27 @@ class Tools
 			$substr[-1] = chr(ord($substr[-1]) & $masks[$length % 8 - 1]);
 		}
 		return $substr;
+	}
+	
+	public static function bit_compare($string1, $string2): int
+	{
+		$strlen = min(strlen($string1), strlen($string2));
+		$same_bits = 0;
+		for ($i = 0; $i < $strlen; $i++) {
+			$different = ord($string1[$i]) ^ ord($string2[$i]);
+			if ($different == 0) {
+				$same_bits += 8;
+			} else {
+				$count_ones = 0;
+				while ($different) {
+					$different = $different >> 1;
+					$count_ones++;
+				}
+				$same_bits += 8 - $count_ones;
+				break;
+			}
+		}
+		return $same_bits;
 	}
 	
 	public static function bin_dump($string, $mode = self::BIN_DUMP_HEX, $return = false)

@@ -28,7 +28,7 @@ class WordIndex
 		$this->bytes .= pack('L5', 0, 0, 0, 0, 0);
 	}
 
-	public function find($word) : int
+	public function find($word, &$return_node = null) : int
 	{
 		$traverse_node = 1;
 		$bits_found = 0;
@@ -44,17 +44,19 @@ class WordIndex
 			
 			if ($next_node) {
 				$node_bit_len = $node[1] & 0x1f000000;
-				if (string_matches()){
+				$node_string = Tools::bit_substr($node[1] & 0xffffff, 0, $node_bit_len);
+				if (Tools::bit_compare($node_string, Tools::bit_substr($word, $bits_found)) == $node_bit_len){
 					$traverse_node = $next_node;
 					$bits_found += $node_bit_len;
 				} else {
-					return 0;
+					break;
 				}
 			} else {
-				return 0;
+				break;
 			}
 		}
-		if (!isLeaf($traverse_node)) {
+		if (!isLeaf($traverse_node) || $bits_found < strlen($word) * 8) {
+			$return_node = $traverse_node;
 			return 0;
 		}
 		return $traverse_node;
@@ -62,7 +64,11 @@ class WordIndex
 
 	public function insert($word) : int
 	{
-		$node = unpack('L5', substr($this->bytes, 20 * 1, 20));
+		if ($found_id = $this->find($word, $failed_id)) {
+			return $found_id;
+		}
+			
+		$node = unpack('L5', substr($this->bytes, 20 * $failed_id, 20));
 		$node['string'] = $node[0] & 0xffffff;
 		$node['strbits'] = $node[0] & 0x1f000000;
 		    // Begin at the root with no elements found
