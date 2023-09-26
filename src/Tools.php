@@ -74,15 +74,29 @@ class Tools
 					$output .= str_pad(base_convert(ord($string[$i]), 10, 2), 8, '0', STR_PAD_LEFT);
 			}
 			$output .= ' ';
-			if ($i && !($i % 8)) {
+			if ($i && $i % 8 == 7) {
 				$output .= PHP_EOL;
 			}
 		}
 		if ($return) {
 			return trim($output);
 		} else {
-			echo trim($output) . PHP_EOL;
+			echo trim($output) . PHP_EOL . PHP_EOL;
 			return;
+		}
+	}
+	
+	public static function string_splice(&$string, $start, $replace)
+	{
+		if ($start >= strlen($string)) {
+			$string .= pack('x' . ($start - strlen($string))) .$replace;
+		} else if ($start + strlen($replace) <= strlen($string)) {
+			for ($i = 0; $i < strlen($replace); $i++) {
+				$string[$start + $i] = $replace[$i];
+			}
+		} else {
+			self::string_splice($string, $start, substr($replace, 0, strlen($string) - $start));
+			self::string_splice($string, strlen($string), substr($replace, strlen($string) - $start));
 		}
 	}
 }	

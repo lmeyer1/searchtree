@@ -28,25 +28,32 @@ class WordIndex
 		$this->bytes .= pack('L5', 0, 0, 0, 0, 0);
 	}
 
-	public function find($word, &$return_node = null) : int
+	/**
+	 * @returns array [$success bool, $path array of nodes visited, $bits_found]
+	 */
+	public function find($word) : array
 	{
 		$traverse_node = 1;
 		$bits_found = 0;
+		$found = false;
+		$is_leaf = false;
+		$path = [$traverse_node];
 		
 		while ($traverse_node && $bits_found < strlen($word) * 8)
 		{
-			$next_byte = ord(substr($word, intdiv($bits_found, 8), 1));
-			$next_bit = (bool)($next_byte << ($bits_found % 8)) & 0x80;
+			$next_bit = Tools::bit_substr($bits_found, 1) == 0x80;
 			
 			$node_pointer = 20 * $traverse_node + 4 + (int) $next_bit * 4;
-			$node = unpack('L5', substr($this->bytes, 20 * $traverse_node, 4));
+			$node = unpack('L5', substr($this->bytes, 20 * $traverse_node, 20));
 			$next_node = $node[2 + (int) $next_bit];
+			$is_leaf = $node[1] & 0x20000000;
 			
 			if ($next_node) {
 				$node_bit_len = $node[1] & 0x1f000000;
 				$node_string = Tools::bit_substr($node[1] & 0xffffff, 0, $node_bit_len);
-				if (Tools::bit_compare($node_string, Tools::bit_substr($word, $bits_found)) == $node_bit_len){
+				if (Tools::bit_compare($node_string, Tools::bit_substr($word, $bits_found + 1)) == $node_bit_len){
 					$traverse_node = $next_node;
+					array_push($path, $traverse_node);
 					$bits_found += $node_bit_len;
 				} else {
 					break;
@@ -55,25 +62,49 @@ class WordIndex
 				break;
 			}
 		}
-		if (!isLeaf($traverse_node) || $bits_found < strlen($word) * 8) {
-			$return_node = $traverse_node;
-			return 0;
+		if ($is_leaf && $bits_found == strlen($word) * 8) {
+			$found = true;
 		}
-		return $traverse_node;
+		return [$found, $path, $bits_found];
 	}
 
-	public function insert($word) : int
+	public function insert($word, $path, $bits_found): array
 	{
-		if ($found_id = $this->find($word, $failed_id)) {
-			return $found_id;
+		$result = $this->find($word);
+		if ($result[0]) {
+			return $result;
 		}
+		$failed_node = end($path);
+		$last_used = unpack('L', substr($this->bytes, 4, 4))[1];
+		$node = unpack('L5', substr($this->bytes, 20 * $failed_node, 20));
+		$first_bit = ord(Tools::bit_substr($word, $bits_found, 1)) == 0x80;
+		$flag_byte = ord(substr($this->bytes, 20 * $failed_node, 1));
+		if (!$first_bit && !($flag_byte & 0x80) || $first_bit && !($flag_byte & 0x40)) { // the child node is missing
+			$next_node_id = pack('L', $last_used + 1);
+			Tools::string_splice($this->bytes, 20 * $failed_node + 4 + ((int) $first_bit * 4), $next_node_id);
+			$this->bytes[20 * $failed_node] = chr(!$first_bit ? $flag_byte | 0x80 : $flag_byte | 0x40);
+			$remaining_bits = strlen($word) * 8 - $bits_found - 1;
+			if ($remaining_bits > 24) {
+				$node_bits = 24;
+				$is_leaf = false;
+			} else {
+				$node_bits = $remaining_bits;
+				$is_leaf = true;
+			}
+			$encoded_string = chr(($is_leaf ? 0x20 : 0x0) + $node_bits) . Tools::bit_substr($word, $bits_found + 1, $node_bits);
+			$bits_found += $node_bits + 1;
+			$next_node = pack('a20', $encoded_string);
+			Tools::string_splice($this->bytes, 20 * ($last_used + 1), $next_node);
+			Tools::string_splice($this->bytes, 4, pack('L', $last_used + 1));
+			array_push($path, $last_used + 1);
+			if (!$is_leaf) {
+				return $this->insert($word, $path, $bits_found);
+			} else {
+				return [true, $path, $bits_found];
+			}
+		} else {
 			
-		$node = unpack('L5', substr($this->bytes, 20 * $failed_id, 20));
-		$node['string'] = $node[0] & 0xffffff;
-		$node['strbits'] = $node[0] & 0x1f000000;
-		    // Begin at the root with no elements found
-
-
+		}
 	}
 
 	public function setListNode($word_node, $wlist_node) : void

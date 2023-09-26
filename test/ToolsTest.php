@@ -70,4 +70,26 @@ final class ToolsTest extends TestCase
 			Tools::bin_dump($input, $mode, true)
 		);
 	}
+
+	public static function stringSpliceProvider(): array
+	{
+		return [
+			['abcd', 6, 'defg', "abcd\0\0defg"],
+			['abcd', 1, 'defg', 'adefg'],
+			['abcd', 2, 'de', 'abde'],
+			['abcd', 2, "d\0", "abd\0"],
+		];
+	}
+
+	/**
+	 * @dataProvider stringSpliceProvider
+	 */
+	public function testStringSplice(string $string, int $start, string $replace, string $result): void
+	{
+		Tools::string_splice($string, $start, $replace);
+		$this->assertEquals(
+			$result,
+			$string
+		);
+	}
 }

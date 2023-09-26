@@ -59,10 +59,12 @@ class Index
 
 	protected function insertWord($doc_id, $word)
 	{
-		$word_node = $this->words->find($word);
-		if (!$word_node) {
-			$word_node = $this->words->insert($word);
+		$result = $this->words->find($word);
+		if (!$result[0]) {
+			$result = $this->words->insert($word, $result[1], $result[2]);
 		}
+		assert($result[0] === true, 'A node must be found or inserted');
+		$word_node = end($result[1]);
 		
 		$wlist_node = $this->words->getListNode($word_node);
 		if ($wlist_node) {
