@@ -10,7 +10,7 @@ final class WordIndexTest extends TestCase
 	{
 		$index = new WordIndex(null);
 		$this->assertEquals(
-			pack('H*', '57524453010000000000000000000000000000000000000000000000000000000000000000000000'),
+			pack('H*', '5752445300000000000000000000000000000000'),
 			$index->getBytes()
 		);
 		return $index;
@@ -23,7 +23,7 @@ final class WordIndexTest extends TestCase
 	{
 		$result = $index->find('test');
 		$this->assertEquals(
-			[false, [1], 0],
+			[false, [], 0],
 			$result
 		);
 		return [$index, $result];
@@ -40,12 +40,12 @@ final class WordIndexTest extends TestCase
 		Tools::bin_dump('test', Tools::BIN_DUMP_BIN);
 		Tools::bin_dump($index->getBytes());
 		$this->assertEquals(
-			[true, [1, 2, 3], 32],
+			[true, [1, 2], 32],
 			$result,
 			'insert'
 		);
 		$this->assertEquals(
-			[true, [1, 2, 3], 32],
+			[true, [1, 2], 32],
 			$index->find('test'),
 			'find'
 		);
