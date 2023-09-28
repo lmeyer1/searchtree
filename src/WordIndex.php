@@ -78,16 +78,21 @@ class WordIndex
 		if ($result[0]) {
 			return $result;
 		}
+		Tools::bin_dump($this->bytes);
 		$next_node_id = $this->getNewNode();
+		var_dump($next_node_id);
 		if (count($path)) {
 			$current_node = end($path);
 			$first_bit = ord(Tools::bit_substr($word, $bits_found, 1)) == 0x80;
-			$flag_byte = ord(substr($this->bytes, 20 * $failed_node, 1));
+			$flag_byte = ord(substr($this->bytes, 20 * $current_node, 1));
 			Tools::string_splice($this->bytes, 20 * $current_node, chr(!$first_bit ? $flag_byte | 0x80 : $flag_byte | 0x40));
-			Tools::string_splice($this->bytes, 20 * $current_node + 4 + ((int) $first_bit * 4), pack('L', $next_node_id));
 			$bits_found++;
+		} else {
+			$current_node = 0;
+			$first_bit = 0;
 		}
-		$remaining_bits = strlen($word) - $bits_found;
+		Tools::string_splice($this->bytes, 20 * $current_node + 4 + ((int) $first_bit * 4), pack('L', $next_node_id));
+		$remaining_bits = strlen($word) * 8 - $bits_found;
 		if ($remaining_bits > 24) {
 			$node_bits = 24;
 			$is_leaf = false;
@@ -95,9 +100,9 @@ class WordIndex
 			$node_bits = $remaining_bits;
 			$is_leaf = true;
 		}
-		$bits_found += $node_bits;
 		$flags = $is_leaf ? 0x20 : 0x0;
 		$encoded_string = chr($flags + $node_bits) . Tools::bit_substr($word, $bits_found, $node_bits);
+		$bits_found += $node_bits;
 		Tools::string_splice($this->bytes, 20 * $next_node_id, pack('a20', $encoded_string));
 		array_push($path, $next_node_id);
 		if (!$is_leaf) {
@@ -121,10 +126,10 @@ class WordIndex
 		if ($data[2]) {
 			$new_node = $data[2];
 			$next_free = unpack('L', substr($this->bytes, 20 * $new_node, 4));
-			Tools::string_splice($this->bytes, 8, pack('L2', $next_free, $data[3] - 1));
+			Tools::string_splice($this->bytes, 12, pack('L2', $next_free, $data[3] - 1));
 		} else {
 			$new_node = $data[1] + 1;
-			Tools::string_splice($this->bytes, 4, pack('L', $new_node));
+			Tools::string_splice($this->bytes, 8, pack('L', $new_node));
 		}
 		return $new_node;
 	}
