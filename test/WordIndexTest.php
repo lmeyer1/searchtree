@@ -37,17 +37,16 @@ final class WordIndexTest extends TestCase
 		$index = $args[0];
 		$result = $args[1];
 		$result = $index->insert('test', $result[1], $result[2]);
-		Tools::bin_dump('test', Tools::BIN_DUMP_BIN);
 		Tools::bin_dump($index->getBytes());
 		$this->assertEquals(
 			[true, [1, 2], 32],
 			$result,
-			'insert'
+			"Inserting 'test'"
 		);
 		$this->assertEquals(
 			[true, [1, 2], 32],
 			$index->find('test'),
-			'find'
+			"Finding 'test'"
 		);
 		return $index;
 	}

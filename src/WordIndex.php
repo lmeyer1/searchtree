@@ -33,24 +33,28 @@ class WordIndex
 	 */
 	public function find($word) : array
 	{
-		$traverse_node = 1;
+		$root_node = 0;
 		$found = false;
 		$path = [];
 		$bits_found = 0;
-		if (strlen($this->bytes) < 20 * ($traverse_node + 1)) {
+/*		if (strlen($this->bytes) < 20 * ($current_node + 1)) {
 			return [$found, $path, $bits_found];
-		}
+		}*/
 		$is_leaf = false;
-		$path[] = $traverse_node;
+		//$path[] = $current_node;
+		$current_node = unpack('L', substr($this->bytes, 4, 4))[1];
 		
-		while ($traverse_node && $bits_found < strlen($word) * 8)
+		while ($current_node && $bits_found < strlen($word) * 8)
 		{
-			$node = unpack('L5', substr($this->bytes, 20 * $traverse_node, 20));
-			$node_bit_len = $node[1] & 0x1f000000;
-			$node_string = Tools::bit_substr($node[1] & 0xffffff, 0, $node_bit_len);
-			if (Tools::bit_compare($node_string, Tools::bit_substr($word, $bits_found)) == $node_bit_len) {
+			$node_bytes = substr($this->bytes, 20 * $current_node, 20);
+			$flag_byte = ord($node_bytes[0]);
+			$node_bytes[0] = "\0";
+			$node = unpack('L5', $node_bytes);
+			$node_bit_len = $flag_byte & 0x1f;
+			$node_string = Tools::bit_substr(substr($node_bytes, 1, 3), 0, $node_bit_len);
+			if (Tools::bit_compare($node_string, Tools::bit_substr($word, $bits_found)) >= $node_bit_len) {
 				$bits_found += $node_bit_len;
-				$is_leaf = $node[1] & 0x20000000;
+				$is_leaf = $flag_byte & 0x20;
 				if ($is_leaf && $bits_found == strlen($word) * 8) {
 					$found = true;
 					break;
@@ -62,8 +66,9 @@ class WordIndex
 			$next_node = $node[2 + (int) $next_bit];
 			$bits_found++;
 			if ($next_node) {
-				$traverse_node = $next_node;
-				array_push($path, $traverse_node);
+				$path[] = $current_node;
+				$current_node = $next_node;
+				array_push($path, $current_node);
 			} else {
 				break;
 			}
@@ -78,9 +83,7 @@ class WordIndex
 		if ($result[0]) {
 			return $result;
 		}
-		Tools::bin_dump($this->bytes);
 		$next_node_id = $this->getNewNode();
-		var_dump($next_node_id);
 		if (count($path)) {
 			$current_node = end($path);
 			$first_bit = ord(Tools::bit_substr($word, $bits_found, 1)) == 0x80;
