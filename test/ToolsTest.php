@@ -15,6 +15,7 @@ final class ToolsTest extends TestCase
 			['abc', 6, 16, "X\x98"],
 			['abcdefg', 3, 47, "\x0b\x13\x1b\x23\x2b\x32"],
 			['abc', 6, null, "X\x98\xc0"],
+			['abc', 24, null, ''],
 		];
 	}
 

@@ -1,9 +1,12 @@
 <?php
 namespace Searchindex;
 
+use Exception;
+
 class WordIndex 
 {
 	protected $bytes;
+	public $count_inserts;
 
 	public function __construct ($bytes = null)
 	{
@@ -37,38 +40,34 @@ class WordIndex
 		$found = false;
 		$path = [];
 		$bits_found = 0;
-/*		if (strlen($this->bytes) < 20 * ($current_node + 1)) {
-			return [$found, $path, $bits_found];
-		}*/
 		$is_leaf = false;
-		//$path[] = $current_node;
 		$current_node = unpack('L', substr($this->bytes, 4, 4))[1];
 		
 		while ($current_node && $bits_found < strlen($word) * 8)
 		{
 			$node_bytes = substr($this->bytes, 20 * $current_node, 20);
 			$flag_byte = ord($node_bytes[0]);
-			$node_bytes[0] = "\0";
-			$node = unpack('L5', $node_bytes);
+			$node = unpack('L4', substr($node_bytes, 4));
 			$node_bit_len = $flag_byte & 0x1f;
 			$node_string = Tools::bit_substr(substr($node_bytes, 1, 3), 0, $node_bit_len);
 			if (Tools::bit_compare($node_string, Tools::bit_substr($word, $bits_found)) >= $node_bit_len) {
 				$bits_found += $node_bit_len;
+				$path[] = $current_node;
 				$is_leaf = $flag_byte & 0x20;
-				if ($is_leaf && $bits_found == strlen($word) * 8) {
-					$found = true;
+				if ($bits_found == strlen($word) * 8) {
+					if ($is_leaf) {
+						$found = true;
+					}
 					break;
 				}
 			} else {
 				break;
 			}
-			$next_bit = Tools::bit_substr($bits_found, 1) == 0x80;
-			$next_node = $node[2 + (int) $next_bit];
+			$next_bit = Tools::bit_substr($word, $bits_found, 1) == 0x80;
+			$next_node = $node[1 + (int) $next_bit];
 			$bits_found++;
 			if ($next_node) {
-				$path[] = $current_node;
 				$current_node = $next_node;
-				array_push($path, $current_node);
 			} else {
 				break;
 			}
@@ -79,21 +78,28 @@ class WordIndex
 
 	public function insert($word, $path, $bits_found): array
 	{
+		$this->count_inserts++;
 		$result = $this->find($word);
 		if ($result[0]) {
 			return $result;
 		}
-		$next_node_id = $this->getNewNode();
 		if (count($path)) {
 			$current_node = end($path);
-			$first_bit = ord(Tools::bit_substr($word, $bits_found, 1)) == 0x80;
 			$flag_byte = ord(substr($this->bytes, 20 * $current_node, 1));
+			if ($bits_found == strlen($word) * 8) { // we are at the correct node, but we don't have a leaf
+				if ($flag_byte & 0x20) throw new Exception('Unexpected leaf flag');
+				$flag_byte = $flag_byte | 0x20;
+				Tools::string_splice($this->bytes, 20 * $current_node, chr($flag_byte));
+				return [true, $path, $bits_found];
+			}
+			$first_bit = ord(Tools::bit_substr($word, $bits_found, 1)) == 0x80;
 			Tools::string_splice($this->bytes, 20 * $current_node, chr(!$first_bit ? $flag_byte | 0x80 : $flag_byte | 0x40));
 			$bits_found++;
 		} else {
 			$current_node = 0;
 			$first_bit = 0;
 		}
+		$next_node_id = $this->getNewNode();
 		Tools::string_splice($this->bytes, 20 * $current_node + 4 + ((int) $first_bit * 4), pack('L', $next_node_id));
 		$remaining_bits = strlen($word) * 8 - $bits_found;
 		if ($remaining_bits > 24) {

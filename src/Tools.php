@@ -10,6 +10,9 @@ class Tools
 
 	public static function bit_substr($string, $offset, $length = null): string
 	{
+		if ($offset > strlen($string) * 8 || $length === 0) {
+			return '';
+		}
 		if (is_null($length)) {
 			$length = strlen($string) * 8 - $offset;
 		}
