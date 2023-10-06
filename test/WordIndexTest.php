@@ -55,8 +55,9 @@ final class WordIndexTest extends TestCase
     {
         return [
             ['tes', [1], 24],
+            ['tesère', [1], 24], // 7 chars
             ['the', [], 0],
-/*			['tür', [], 0],
+/*          ['tür', [], 0],
             ['testimony', [1], 24],
             ['test it', [1], 24],
             ['1025', [], 0],*/

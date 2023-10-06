@@ -92,7 +92,7 @@ class Tools
     public static function string_splice(&$string, $start, $replace)
     {
         if ($start >= strlen($string)) {
-            $string .= pack('x' . ($start - strlen($string)), null) . $replace;
+            $string .= pack('x' . ($start - strlen($string))) . $replace;
         } else if ($start + strlen($replace) <= strlen($string)) {
             for ($i = 0; $i < strlen($replace); $i++) {
                 $string[$start + $i] = $replace[$i];

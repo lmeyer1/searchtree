@@ -63,11 +63,15 @@ class WordIndex
             } else {
                 break;
             }
-            $next_bit = Tools::bit_substr($word, $bits_found, 1) == 0x80;
-            $next_node = $node[1 + (int) $next_bit];
-            $bits_found++;
-            if ($next_node) {
-                $current_node = $next_node;
+            $next_bit = Tools::bit_substr($word, $bits_found, 1) == "\x80";
+            if (!$next_bit ? $flag_byte & 0x80 : $flag_byte & 0x40) {
+                $next_node = $node[1 + (int) $next_bit];
+                $bits_found++;
+                if ($next_node) {
+                    $current_node = $next_node;
+                } else {
+                    break;
+                }
             } else {
                 break;
             }
@@ -83,9 +87,11 @@ class WordIndex
         if ($result[0]) {
             return $result;
         }
+        $bit_matches = false;
         if (count($path)) {
             $current_node = end($path);
-            $flag_byte = ord(substr($this->bytes, 20 * $current_node, 1));
+            $node_bytes = substr($this->bytes, 20 * $current_node, 20);
+            $flag_byte = ord($node_bytes[0]);
             if ($bits_found == strlen($word) * 8) { // we are at the correct node, but we don't have a leaf
                 if ($flag_byte & 0x20) throw new Exception('Unexpected leaf flag');
                 $flag_byte = $flag_byte | 0x20;
@@ -93,27 +99,39 @@ class WordIndex
                 return [true, $path, $bits_found];
             }
             $first_bit = ord(Tools::bit_substr($word, $bits_found, 1)) == 0x80;
-            Tools::string_splice($this->bytes, 20 * $current_node, chr(!$first_bit ? $flag_byte | 0x80 : $flag_byte | 0x40));
+            $bit_matches = !$first_bit ? $flag_byte & 0x80 : $flag_byte & 0x40;
+            if (!$bit_matches) { // the bit is not found
+                Tools::string_splice($this->bytes, 20 * $current_node, chr(!$first_bit ? $flag_byte | 0x80 : $flag_byte | 0x40));
+            }
             $bits_found++;
         } else {
             $current_node = 0;
             $first_bit = 0;
         }
         $next_node_id = $this->getNewNode();
-        Tools::string_splice($this->bytes, 20 * $current_node + 4 + ((int) $first_bit * 4), pack('L', $next_node_id));
-        $remaining_bits = strlen($word) * 8 - $bits_found;
-        if ($remaining_bits > 24) {
-            $node_bits = 24;
-            $is_leaf = false;
+        if ($bit_matches) {
+            $node_bit_len = $flag_byte & 0x1f;
+            $node_string = Tools::bit_substr(substr($node_bytes, 1, 3), 0, $node_bit_len);
+            $matching_bits = Tools::bit_compare($node_string, Tools::bit_substr($word, $bits_found));
+            if ($matching_bits >= $node_bit_len) throw new Exception('Too many matching bits');
+            $flag_byte = $flag_byte & 0xe0 + $node_bit_len;
+            Tools::string_splice($this->bytes, 20 * $current_node, chr($flag_byte) . pack('a3', Tools::bit_substr($word, $bits_found, $matching_bits)));
         } else {
-            $node_bits = $remaining_bits;
-            $is_leaf = true;
+            Tools::string_splice($this->bytes, 20 * $current_node + 4 + ((int) $first_bit * 4), pack('L', $next_node_id));
+            $remaining_bits = strlen($word) * 8 - $bits_found;
+            if ($remaining_bits > 24) {
+                $node_bits = 24;
+                $is_leaf = false;
+            } else {
+                $node_bits = $remaining_bits;
+                $is_leaf = true;
+            }
+            $flags = $is_leaf ? 0x20 : 0x0;
+            $encoded_string = chr($flags + $node_bits) . Tools::bit_substr($word, $bits_found, $node_bits);
+            $bits_found += $node_bits;
+            Tools::string_splice($this->bytes, 20 * $next_node_id, pack('a20', $encoded_string));
+            array_push($path, $next_node_id);
         }
-        $flags = $is_leaf ? 0x20 : 0x0;
-        $encoded_string = chr($flags + $node_bits) . Tools::bit_substr($word, $bits_found, $node_bits);
-        $bits_found += $node_bits;
-        Tools::string_splice($this->bytes, 20 * $next_node_id, pack('a20', $encoded_string));
-        array_push($path, $next_node_id);
         if (!$is_leaf) {
             return $this->insert($word, $path, $bits_found);
         } else {
