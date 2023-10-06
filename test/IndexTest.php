@@ -4,13 +4,13 @@ use PHPUnit\Framework\TestCase;
 
 final class IndexTest extends TestCase
 {
-	public function testInit(): void
-	{
-		$index = new Searchindex\Index(null);
-		$this->assertEquals(
-			pack('H*', '494e4458140000001400000004000000' . '5752445300000000000000000000000000000000' . 
-			'574c535400000000000000000000000000000000' . '444f435' . '3444c535400000000000000000000000000000000'),
-			$index->getBytes()
-		);
-	}
+    public function testInit(): void
+    {
+        $index = new Searchindex\Index(null);
+        $this->assertEquals(
+            pack('H*', '494e4458140000001400000004000000' . '5752445300000000000000000000000000000000' .
+            '574c535400000000000000000000000000000000' . '444f435' . '3444c535400000000000000000000000000000000'),
+            $index->getBytes()
+        );
+    }
 }
